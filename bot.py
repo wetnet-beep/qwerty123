@@ -8,6 +8,10 @@ import re
 import threading
 from datetime import datetime, timedelta
 import os
+import logging
+
+# Настройка логов
+logging.basicConfig(level=logging.INFO)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "8321389005:AAFLGNmxcnLB5GlZ2vXIc5DzNQNX1DOg_7M")
 
@@ -183,9 +187,31 @@ def handle_message(message):
         text="Привет! Как дела?"
     )
 
-print("✅ SWILL Модератор запущен!")
-while True:
-    try:
-        bot.infinity_polling(timeout=60)
-    except:
-        time.sleep(5)
+# Функция для запуска бота в отдельном потоке
+def run_bot():
+    print("✅ Бот-модератор запущен!")
+    while True:
+        try:
+            bot.infinity_polling(timeout=60)
+        except Exception as e:
+            print(f"⚠️ Ошибка бота: {e}, перезапуск...")
+            time.sleep(5)
+
+# Запускаем бота в фоне
+bot_thread = threading.Thread(target=run_bot, daemon=True)
+bot_thread.start()
+
+# Flask для Web Service
+from flask import Flask, jsonify
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return jsonify({"status": "Бот работает!", "muted": len(muted_users), "warns": len(warn_threshold)})
+
+@app.route('/ping')
+def ping():
+    return jsonify({"status": "pong", "time": datetime.now().isoformat()})
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
